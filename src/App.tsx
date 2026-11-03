@@ -5,6 +5,7 @@ import { MarkeeModal, MarkeeSign } from '@markee_team/sdk/react';
 import type { Address, MarkeeTheme, Placement } from '@markee_team/sdk';
 import { useMarkeeWallet } from './wallet';
 import { configurationFile } from './config-export';
+import { ThemeColors } from './ThemeColors';
 
 const sale = import.meta.env.VITE_SALE_BOARD || '0x80783947c9561EFa9BA484D44BBd5AAa03028242';
 const apiUrl = import.meta.env.VITE_MARKEE_API_URL || undefined;
@@ -34,6 +35,8 @@ function ThemePicker({ id, label, value, onChange }: { id: string; label: string
 export function App() {
   const [mode, setMode] = useState<'sale' | 'rent' | 'community'>('sale');
   const [signTheme, setSignTheme] = useState<ThemeName>('charcoal');
+  const [signColors, setSignColors] = useState<NonNullable<MarkeeTheme['colors']>>({});
+  const [modalColors, setModalColors] = useState<NonNullable<MarkeeTheme['colors']>>({});
   const [hoverEnabled, setHoverEnabled] = useState(true);
   const [modalTheme, setModalTheme] = useState<ThemeName>('light');
   const [rent, setRent] = useState(import.meta.env.VITE_RENT_BOARD || '0xAce1e0dfD123525B1270a69CF9b1C5b6F850f1e6');
@@ -47,10 +50,12 @@ export function App() {
   const placement = useMemo<Placement>(() => mode === 'community' ? { kind: 'gardens-community', chainId, community: community as Address } : { kind: 'board', chainId: 8453, address: (mode === 'sale' ? sale : rent) as Address }, [mode, chainId, community, rent]);
   const signThemeConfig = useMemo<MarkeeTheme>(() => ({
     ...themes[signTheme],
+    colors: { ...(themes[signTheme] as MarkeeTheme).colors, ...signColors },
     sign: { hoverLogo: hoverEnabled },
-  }), [signTheme, hoverEnabled]);
+  }), [signTheme, hoverEnabled, signColors]);
+  const modalThemeConfig = useMemo<MarkeeTheme>(() => ({ ...themes[modalTheme], colors: { ...(themes[modalTheme] as MarkeeTheme).colors, ...modalColors } }), [modalTheme, modalColors]);
   const valid = /^0x[\da-fA-F]{40}$/.test(mode === 'community' ? community : mode === 'rent' ? rent : sale);
-  const configSource = configurationFile({ placement, signTheme: signThemeConfig, modalTheme: themes[modalTheme], apiUrl, siteUrl: mode === 'community' ? undefined : siteUrl });
+  const configSource = configurationFile({ placement, signTheme: signThemeConfig, modalTheme: modalThemeConfig, apiUrl, siteUrl: mode === 'community' ? undefined : siteUrl });
   const copyConfig = async () => {
     try { await navigator.clipboard.writeText(configSource); setExportNotice('Configuration copied.'); }
     catch { setExportNotice('Copy unavailable. Select the code below or download the file.'); }
@@ -69,9 +74,11 @@ export function App() {
       <section className="demo"><div className="demo-top"><span>THE INTEGRATION PLAYGROUND</span><span className="network">Base</span></div><div className="tabs" aria-label="Placement type">{(['sale', 'rent', 'community'] as const).map(value => <button key={value} className={mode === value ? 'selected' : ''} onClick={() => { setMode(value); setNotice(''); }}>{value === 'sale' ? 'For sale' : value === 'rent' ? 'For rent' : 'Community'}</button>)}</div><div className="preview"><div className="preview-top"><span className="tiny-mark">m</span><span>{mode === 'sale' ? 'A message that stays with you' : mode === 'rent' ? 'Your message, in the spotlight' : 'Built around your community'}</span></div>{valid ? <MarkeeSign className="live-sign" apiUrl={apiUrl} placement={placement} theme={signThemeConfig} onOpen={() => setOpen(true)} /> : <div className="illustration" aria-hidden="true"><div className="orb"/><div className="mini-sign"><span>MARK YOUR MOMENT</span><strong>Hello,<br/>possibility.</strong><span className="mini-bottom">✳ &nbsp; powered by markee</span></div><div className="floating-tag">{mode === 'sale' ? 'YOURS TO OWN ↗' : 'YOURS TO BACK ↗'}</div></div>}<h2>{mode === 'sale' ? 'Make your mark.' : mode === 'rent' ? 'Keep the conversation going.' : 'A voice. A shared treasury.'}</h2><p>{mode === 'sale' ? 'Explore the sample For Sale board, create a message, and fund your place on the leaderboard.' : mode === 'rent' ? 'Choose a rental board to start, adjust, or stop a stream and manage your ETHx balance.' : 'Open a community board, activate its integration, and manage revenue with your council wallet.'}</p></div>
       {mode === 'rent' && <div className="config"><label htmlFor="rent-board">Rental board address</label><input id="rent-board" value={rent} onChange={event => setRent(event.target.value)} placeholder="0x…" spellCheck={false}/></div>}
       {mode === 'community' && <div className="config"><label htmlFor="community-chain">Community network</label><select id="community-chain" value={chainId} onChange={event => setChainId(Number(event.target.value))}>{[[100, 'Gnosis'], [8453, 'Base'], [10, 'Optimism'], [42161, 'Arbitrum'], [42220, 'Celo'], [137, 'Polygon'], [1, 'Ethereum'], [11155111, 'Sepolia'], [421614, 'Arbitrum Sepolia'], [11155420, 'Optimism Sepolia']].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><label htmlFor="community-address">Community address</label><input id="community-address" value={community} onChange={event => setCommunity(event.target.value)} placeholder="0x…" spellCheck={false}/></div>}
-      <ThemePicker id="sign-theme" label="Sign theme" value={signTheme} onChange={setSignTheme} />
+      <ThemePicker id="sign-theme" label="Sign theme" value={signTheme} onChange={value => { setSignTheme(value); setSignColors({}); }} />
+      <ThemeColors label="Sign" theme={themes[signTheme]} overrides={signColors} onChange={setSignColors} />
       <div className="config hover-config"><label className="hover-toggle" htmlFor="sign-hover-enabled"><input id="sign-hover-enabled" type="checkbox" checked={hoverEnabled} onChange={event => setHoverEnabled(event.target.checked)} /> Markee logo on hover</label></div>
-      <ThemePicker id="modal-theme" label="Modal theme" value={modalTheme} onChange={setModalTheme} />
+      <ThemePicker id="modal-theme" label="Modal theme" value={modalTheme} onChange={value => { setModalTheme(value); setModalColors({}); }} />
+      <ThemeColors label="Modal" theme={themes[modalTheme]} overrides={modalColors} onChange={setModalColors} />
       <div className="launch"><button className="launch-button" disabled={!valid} onClick={() => setOpen(true)}>Open Markee <span>↗</span></button><span className="launch-note">{account.isConnected ? 'Uses your connected app wallet' : 'Browse first. Connect when you’re ready.'}</span></div></section>
     </main>
     <section className="config-export" aria-labelledby="config-export-title">
@@ -82,6 +89,6 @@ export function App() {
       <p role="status" className="export-status">{exportNotice}</p>
     </section>
     <footer className="site-footer"><span>MARK BOTH THE MOMENT & THE FUTURE.</span><span>Markee SDK × ConnectKit</span></footer>{notice && <div className="toast" role="status">{notice}</div>}
-    <MarkeeModal apiUrl={apiUrl} siteUrl={mode === 'community' ? undefined : siteUrl} wallet={wallet} theme={themes[modalTheme]} placement={placement} open={open} onClose={() => setOpen(false)} onEvent={event => { if (event.type === 'confirmed') setNotice('Your Markee transaction is confirmed.'); }} />
+    <MarkeeModal apiUrl={apiUrl} siteUrl={mode === 'community' ? undefined : siteUrl} wallet={wallet} theme={modalThemeConfig} placement={placement} open={open} onClose={() => setOpen(false)} onEvent={event => { if (event.type === 'confirmed') setNotice('Your Markee transaction is confirmed.'); }} />
   </div>;
 }
