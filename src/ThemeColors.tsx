@@ -41,7 +41,7 @@ export function ThemeColors({ label, theme, overrides, onChange }: {
   const title = (key: string) => key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
   return <details className="color-editor"><summary>Customize {label.toLowerCase()} colors</summary>
     <div className="color-grid">{(Object.keys(defaults) as (keyof MarkeeThemeColors)[]).map(key => <label className="color-field" key={key}>
-      <span>{title(key)}</span><div><input type="color" aria-label={`${label} ${title(key).toLowerCase()} color`} value={colors[key].slice(0, 7)} onChange={event => onChange({ ...overrides, [key]: event.target.value + colors[key].slice(7) })}/><code>{colors[key]}</code></div>
+      <span>{title(key)}</span><div><input type="color" aria-label={`${label} ${title(key).toLowerCase()} color`} value={colors[key].slice(0, 7)} onInput={event => onChange({ ...overrides, [key]: event.currentTarget.value + colors[key].slice(7) })}/><code>{colors[key]}</code></div>
     </label>)}</div>
     <label className="opacity-field">Overlay opacity <input type="range" min="0" max="255" aria-label={`${label} overlay opacity`} value={parseInt(colors.overlay.slice(7) || 'ff', 16)} onChange={event => onChange({ ...overrides, overlay: colors.overlay.slice(0, 7) + Number(event.target.value).toString(16).padStart(2, '0') })}/></label>
     <button className="reset-colors" disabled={!Object.keys(overrides).length} onClick={() => onChange({})}>Reset to theme colors</button>
