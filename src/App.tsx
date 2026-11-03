@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi';
 import { MarkeeModal, MarkeeSign } from '@markee_team/sdk/react';
 import type { Address, MarkeeTheme, Placement } from '@markee_team/sdk';
 import { useMarkeeWallet } from './wallet';
+import { configurationFile } from './config-export';
 
 const sale = import.meta.env.VITE_SALE_BOARD || '0x80783947c9561EFa9BA484D44BBd5AAa03028242';
 const apiUrl = import.meta.env.VITE_MARKEE_API_URL || undefined;
@@ -40,6 +41,7 @@ export function App() {
   const [chainId, setChainId] = useState(Number(import.meta.env.VITE_COMMUNITY_CHAIN_ID || 100));
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState('');
+  const [exportNotice, setExportNotice] = useState('');
   const wallet = useMarkeeWallet();
   const account = useAccount();
   const placement = useMemo<Placement>(() => mode === 'community' ? { kind: 'gardens-community', chainId, community: community as Address } : { kind: 'board', chainId: 8453, address: (mode === 'sale' ? sale : rent) as Address }, [mode, chainId, community, rent]);
@@ -48,6 +50,18 @@ export function App() {
     sign: { hoverLogo: hoverEnabled },
   }), [signTheme, hoverEnabled]);
   const valid = /^0x[\da-fA-F]{40}$/.test(mode === 'community' ? community : mode === 'rent' ? rent : sale);
+  const configSource = configurationFile({ placement, signTheme: signThemeConfig, modalTheme: themes[modalTheme], apiUrl, siteUrl: mode === 'community' ? undefined : siteUrl });
+  const copyConfig = async () => {
+    try { await navigator.clipboard.writeText(configSource); setExportNotice('Configuration copied.'); }
+    catch { setExportNotice('Copy unavailable. Select the code below or download the file.'); }
+  };
+  const downloadConfig = () => {
+    const url = URL.createObjectURL(new Blob([configSource], { type: 'text/typescript;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url; anchor.download = 'markee.config.ts'; anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setExportNotice('Configuration downloaded.');
+  };
   return <div className="app">
     <header className="site-header"><a href="#" className="wordmark"><span>m</span> markee <i>×</i> <b>ConnectKit</b></a><ConnectKitButton /></header>
     <main className="layout">
@@ -59,7 +73,15 @@ export function App() {
       <div className="config hover-config"><label className="hover-toggle" htmlFor="sign-hover-enabled"><input id="sign-hover-enabled" type="checkbox" checked={hoverEnabled} onChange={event => setHoverEnabled(event.target.checked)} /> Markee logo on hover</label></div>
       <ThemePicker id="modal-theme" label="Modal theme" value={modalTheme} onChange={setModalTheme} />
       <div className="launch"><button className="launch-button" disabled={!valid} onClick={() => setOpen(true)}>Open Markee <span>↗</span></button><span className="launch-note">{account.isConnected ? 'Uses your connected app wallet' : 'Browse first. Connect when you’re ready.'}</span></div></section>
-    </main><footer className="site-footer"><span>MARK BOTH THE MOMENT & THE FUTURE.</span><span>Markee SDK × ConnectKit</span></footer>{notice && <div className="toast" role="status">{notice}</div>}
+    </main>
+    <section className="config-export" aria-labelledby="config-export-title">
+      <div className="export-heading"><div><div className="overline">TAKE IT INTO YOUR APP</div><h2 id="config-export-title">Your SDK configuration</h2><p>Updates as you change the placement, themes, and hover option above.</p></div><div className="export-actions"><button disabled={!valid} onClick={copyConfig}>Copy code</button><button disabled={!valid} onClick={downloadConfig}>Download .ts ↗</button></div></div>
+      <div className="export-filename">markee.config.ts <span>{valid ? 'Ready to use' : 'Enter a valid address to export'}</span></div>
+      <pre tabIndex={0} aria-label="Generated SDK configuration"><code>{configSource}</code></pre>
+      <p className="export-help">Connect your app’s wallet adapter as shown at the bottom of the file. No API key is needed.</p>
+      <p role="status" className="export-status">{exportNotice}</p>
+    </section>
+    <footer className="site-footer"><span>MARK BOTH THE MOMENT & THE FUTURE.</span><span>Markee SDK × ConnectKit</span></footer>{notice && <div className="toast" role="status">{notice}</div>}
     <MarkeeModal apiUrl={apiUrl} siteUrl={mode === 'community' ? undefined : siteUrl} wallet={wallet} theme={themes[modalTheme]} placement={placement} open={open} onClose={() => setOpen(false)} onEvent={event => { if (event.type === 'confirmed') setNotice('Your Markee transaction is confirmed.'); }} />
   </div>;
 }
