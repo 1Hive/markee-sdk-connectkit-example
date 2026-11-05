@@ -24,16 +24,16 @@ test('malformed boards and unknown integration formats fall back safely', () => 
 test('both generated integrations compile against the installed published SDK', () => {
   const dir = mkdtempSync(resolve('.generated-check-'));
   try {
-    const files = ['react', 'vanilla'].map(integration => {
-      const source = configurationFile({ integration, severity: 'strict', placement: { kind: 'board', chainId: 8453, address }, signTheme: { mode: 'dark', colors: { warning: '#ff9900' } }, modalTheme: { mode: 'light', radius: 12 } });
+    const files = ['react', 'vanilla'].flatMap(integration => [false, true].map(separateModal => {
+      const source = configurationFile({ integration, separateModal, severity: 'strict', placement: { kind: 'board', chainId: 8453, address }, signTheme: { mode: 'dark', colors: { warning: '#ff9900' } }, modalTheme: { mode: 'light', radius: 12 } });
       assert.ok(source.includes(address));
       assert.ok(source.includes('\"severity\": \"strict\"'));
       assert.ok(source.includes('#ff9900'));
       assert.ok(!source.includes('strategy:'));
-      const file = resolve(dir, integration === 'react' ? 'SiteMarkee.tsx' : 'markee.js');
+      const file = resolve(dir, integration === 'react' ? `SiteMarkee-${separateModal}.tsx` : `markee-${separateModal}.js`);
       writeFileSync(file, source);
       return file;
-    });
+    }));
     const program = ts.createProgram(files, { noEmit: true, allowJs: true, checkJs: true, strict: true, skipLibCheck: true, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, allowSyntheticDefaultImports: true });
     const errors = ts.getPreEmitDiagnostics(program);
     assert.equal(errors.length, 0, ts.formatDiagnosticsWithColorAndContext(errors, { getCanonicalFileName: p => p, getCurrentDirectory: () => process.cwd(), getNewLine: () => '\n' }));
@@ -48,4 +48,18 @@ test('strategy and severity query parameters configure the preview without addin
   }
   assert.equal(readPlaygroundLink('?strategy=unknown&severity=disabled').strategy, undefined);
   assert.equal(readPlaygroundLink('?severity=disabled').severity, 'standard');
+});
+
+test('shared exports define colors once and independent modal exports preserve separate colors', () => {
+  for (const separateModal of [false, true]) {
+    const source = configurationFile({ integration: 'vanilla', separateModal, placement: { kind: 'board', chainId: 8453, address }, signTheme: { mode: 'dark', colors: { primary: '#123456' }, sign: { hoverLogo: false } }, modalTheme: { mode: 'light', colors: { primary: '#abcdef' } } });
+    // Evaluate only generated configuration declarations, without mounting SDK UI.
+    const declarations = source.slice(source.indexOf('export const sharedTheme'), source.indexOf('const container')).replaceAll('export const', 'const');
+    const config = Function(declarations + '; return { sharedTheme, signConfig, modalConfig };')();
+    assert.equal(config.signConfig.theme.colors, config.sharedTheme.colors);
+    assert.equal(config.signConfig.theme.sign.hoverLogo, false);
+    assert.equal(config.modalConfig.theme.colors.primary, separateModal ? '#abcdef' : '#123456');
+    assert.equal(config.modalConfig.theme === config.sharedTheme, !separateModal);
+    assert.equal(source.split('#123456').length - 1, 1);
+  }
 });

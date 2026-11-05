@@ -2,12 +2,12 @@
 
 A standalone React/Vite example that embeds the Markee sign and payment modal. ConnectKit supplies the app wallet; Markee supplies the sign, moderation data, payment preparation, reward quote, and transaction verification through its hosted API. The SDK knows its API endpoint, so this app needs no Markee, RPC, or database key.
 
-The sign is a themed button. `MarkeeSign` fetches the current winner and moderation state on its own, blurs flagged messages, and opens the modal when clicked. The sample controls that modal through `onOpen`, so its separate Open Markee button still works and the sign and modal can have different themes. The ConnectKit wallet is passed only to the modal.
+The sign is a themed button. `MarkeeSign` fetches the current winner and moderation state on its own, blurs flagged messages, and opens the modal when clicked. The sample controls that modal through `onOpen`, so its separate Open Markee button still works. The sign and modal share their theme by default; enable **Customize modal separately** to give the modal its own theme. The ConnectKit wallet is passed only to the modal.
 
 ```tsx
 <MarkeeSign placement={placement} theme={signThemeConfig} onOpen={() => setOpen(true)} />
 <button onClick={() => setOpen(true)}>Open Markee</button>
-<MarkeeModal placement={placement} open={open} onClose={() => setOpen(false)} wallet={wallet} theme={themes[modalTheme]} />
+<MarkeeModal placement={placement} open={open} onClose={() => setOpen(false)} wallet={wallet} theme={modalThemeConfig} />
 ```
 
 ## Run locally
@@ -19,7 +19,7 @@ npm run dev
 
 Open <http://127.0.0.1:5173>. The sample uses the latest published `@markee_team/sdk` and two existing Base boards. The **For sale** board supports one-time payments and MARKEE rewards; **For rent** uses ETHx streaming. These are live contracts, so confirming in a wallet moves real funds.
 
-Use the separate sign and modal theme selectors to preview charcoal, light, dark, system, and a custom brand palette. The sign fades in a theme-matched MARKEE logo on hover or keyboard focus; the Markee logo on hover control toggles `theme.sign.hoverLogo`. The app passes its selected ConnectKit wallet to the modal. With no app wallet, supported For Sale payments can continue through Markee's hosted checkout.
+Use the shared theme selector to preview charcoal, light, dark, system, and a custom brand palette. The sign fades in a theme-matched MARKEE logo on hover or keyboard focus; the Markee logo on hover control toggles `theme.sign.hoverLogo`. The app passes its selected ConnectKit wallet to the modal. With no app wallet, supported For Sale payments can continue through Markee's hosted checkout.
 
 ## Configuration
 
@@ -51,4 +51,6 @@ Run `npm test` to check URL validation and compile both generated code formats a
 
 The automatic moderation selector offers Relaxed (scam/phishing rules), Standard (current rules plus profanity), and Strict (also hides links and payment addresses). The exported code passes `moderation: { severity }` to both the sign and modal. `severity=relaxed|standard|strict` can also prefill this selector. Manual flags and unavailable checks still hide content.
 
-Use **Randomize sign colors** or **Randomize modal colors** for a coordinated palette in the selected light/dark mode (System uses the current device mode). Generation checks text/background pairs at 4.5:1 or higher and borders/focus rings at 3:1 or higher, while keeping warning, error, and success hues recognizable. The contrast readout updates after manual edits too. Generated colors appear in the preview, swatches, and exported integration code. These checks cover the generated color pairs, not a complete accessibility audit of the host app.
+Use **Randomize shared colors** (or **Randomize modal colors** when customizing separately) for a coordinated palette in the selected light/dark mode (System uses the current device mode). Generation checks text/background pairs at 4.5:1 or higher and borders/focus rings at 3:1 or higher, while keeping warning, error, and success hues recognizable. The contrast readout updates after manual edits too. Generated colors appear in the preview, swatches, and exported integration code. These checks cover the generated color pairs, not a complete accessibility audit of the host app.
+
+Shared theme changes, color picks, and random palettes apply to both components by default. Enabling **Customize modal separately** copies the current shared theme to start; disabling it restores synchronization without discarding the saved modal settings. React and vanilla exports define `sharedTheme` once and reuse it, with a separate modal theme only when enabled.

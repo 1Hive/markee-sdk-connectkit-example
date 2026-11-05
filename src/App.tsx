@@ -40,11 +40,11 @@ export function App() {
   const [integration, setIntegration] = useState<Integration>(initialLink.integration);
   const [severity, setSeverity] = useState<Severity>(initialLink.severity);
   const moderation = useMemo(() => ({ severity }), [severity]);
-  const [signTheme, setSignTheme] = useState<ThemeName>('charcoal');
-  const [signColors, setSignColors] = useState<NonNullable<MarkeeTheme['colors']>>({});
-  const [modalColors, setModalColors] = useState<NonNullable<MarkeeTheme['colors']>>({});
+  const [sharedTheme, setSharedTheme] = useState<ThemeName>('charcoal');
+  const [sharedColors, setSharedColors] = useState<NonNullable<MarkeeTheme['colors']>>({});
+  const [customizeModal, setCustomizeModal] = useState(false);
+  const [modalOverride, setModalOverride] = useState<{ theme: ThemeName; colors: NonNullable<MarkeeTheme['colors']> } | null>(null);
   const [hoverEnabled, setHoverEnabled] = useState(true);
-  const [modalTheme, setModalTheme] = useState<ThemeName>('light');
   const [rent, setRent] = useState(import.meta.env.VITE_RENT_BOARD || '0xAce1e0dfD123525B1270a69CF9b1C5b6F850f1e6');
   const [community, setCommunity] = useState(import.meta.env.VITE_COMMUNITY_ADDRESS || '');
   const [chainId, setChainId] = useState(Number(import.meta.env.VITE_COMMUNITY_CHAIN_ID || 100));
@@ -54,14 +54,13 @@ export function App() {
   const wallet = useMarkeeWallet();
   const account = useAccount();
   const placement = useMemo<Placement>(() => mode === 'community' ? { kind: 'gardens-community', chainId, community: community as Address } : { kind: 'board', chainId: 8453, address: (mode === 'board' ? board : mode === 'sale' ? sale : rent) as Address }, [mode, chainId, community, rent, board]);
-  const signThemeConfig = useMemo<MarkeeTheme>(() => ({
-    ...themes[signTheme],
-    colors: { ...(themes[signTheme] as MarkeeTheme).colors, ...signColors },
-    sign: { hoverLogo: hoverEnabled },
-  }), [signTheme, hoverEnabled, signColors]);
-  const modalThemeConfig = useMemo<MarkeeTheme>(() => ({ ...themes[modalTheme], colors: { ...(themes[modalTheme] as MarkeeTheme).colors, ...modalColors } }), [modalTheme, modalColors]);
+  const sharedThemeConfig = useMemo<MarkeeTheme>(() => ({ ...themes[sharedTheme], colors: { ...(themes[sharedTheme] as MarkeeTheme).colors, ...sharedColors } }), [sharedTheme, sharedColors]);
+  const signThemeConfig = useMemo<MarkeeTheme>(() => ({ ...sharedThemeConfig, sign: { hoverLogo: hoverEnabled } }), [sharedThemeConfig, hoverEnabled]);
+  const modalThemeConfig = useMemo<MarkeeTheme>(() => customizeModal && modalOverride
+    ? { ...themes[modalOverride.theme], colors: { ...(themes[modalOverride.theme] as MarkeeTheme).colors, ...modalOverride.colors } }
+    : sharedThemeConfig, [customizeModal, modalOverride, sharedThemeConfig]);
   const valid = /^0x[\da-fA-F]{40}$/.test(mode === 'community' ? community : mode === 'board' ? board : mode === 'rent' ? rent : sale);
-  const configSource = configurationFile({ integration, severity, placement, signTheme: signThemeConfig, modalTheme: modalThemeConfig, apiUrl });
+  const configSource = configurationFile({ integration, severity, placement, signTheme: signThemeConfig, modalTheme: modalThemeConfig, separateModal: customizeModal, apiUrl });
   const filename = integration === 'react' ? 'SiteMarkee.tsx' : 'markee.js';
   const copyConfig = async () => {
     try { await navigator.clipboard.writeText(configSource); setExportNotice('Configuration copied.'); }
@@ -83,11 +82,15 @@ export function App() {
       {mode === 'rent'  && <div className="config"><label htmlFor="rent-board">Rental board address</label><input id="rent-board" value={rent} onChange={event => setRent(event.target.value)} placeholder="0x…" spellCheck={false}/></div>}
       {mode === 'community' && <div className="config"><label htmlFor="community-chain">Community network</label><select id="community-chain" value={chainId} onChange={event => setChainId(Number(event.target.value))}>{[[100, 'Gnosis'], [8453, 'Base'], [10, 'Optimism'], [42161, 'Arbitrum'], [42220, 'Celo'], [137, 'Polygon'], [1, 'Ethereum'], [11155111, 'Sepolia'], [421614, 'Arbitrum Sepolia'], [11155420, 'Optimism Sepolia']].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><label htmlFor="community-address">Community address</label><input id="community-address" value={community} onChange={event => setCommunity(event.target.value)} placeholder="0x…" spellCheck={false}/></div>}
       <div className="config"><label htmlFor="moderation-severity">Automatic moderation severity</label><select id="moderation-severity" value={severity} onChange={event => setSeverity(event.target.value as Severity)}><option value="relaxed">Relaxed · scam and phishing rules</option><option value="standard">Standard · current rules and profanity</option><option value="strict">Strict · also hide links and payment addresses</option></select><small>Manual moderator flags always apply. Unavailable checks hide content. This configures your integration; Markee’s site keeps its Standard policy.</small></div>
-      <ThemePicker id="sign-theme" label="Sign theme" value={signTheme} colors={signThemeConfig.colors} onChange={value => { setSignTheme(value); setSignColors({}); }} />
-      <ThemeColors label="Sign" theme={themes[signTheme]} overrides={signColors} onChange={setSignColors} />
+      <ThemePicker id="shared-theme" label="Shared theme" value={sharedTheme} colors={sharedThemeConfig.colors} onChange={value => { setSharedTheme(value); setSharedColors({}); }} />
+      <div className="config"><small>{customizeModal ? 'Used by the sign. The modal uses its separate theme below.' : 'Applies to both the sign and modal.'}</small></div>
+      <ThemeColors label="Shared" theme={themes[sharedTheme]} overrides={sharedColors} onChange={setSharedColors} />
+      <div className="config hover-config"><label className="hover-toggle" htmlFor="customize-modal"><input id="customize-modal" type="checkbox" checked={customizeModal} onChange={event => { const enabled = event.target.checked; if (enabled && !modalOverride) setModalOverride({ theme: sharedTheme, colors: { ...sharedColors } }); setCustomizeModal(enabled); }} /> Customize modal separately</label></div>
+      {customizeModal && modalOverride && <div className="modal-theme-override">
+        <ThemePicker id="modal-theme" label="Modal theme" value={modalOverride.theme} colors={modalThemeConfig.colors} onChange={value => setModalOverride({ theme: value, colors: {} })} />
+        <ThemeColors label="Modal" theme={themes[modalOverride.theme]} overrides={modalOverride.colors} onChange={colors => setModalOverride({ ...modalOverride, colors })} />
+      </div>}
       <div className="config hover-config"><label className="hover-toggle" htmlFor="sign-hover-enabled"><input id="sign-hover-enabled" type="checkbox" checked={hoverEnabled} onChange={event => setHoverEnabled(event.target.checked)} /> Markee logo on hover</label></div>
-      <ThemePicker id="modal-theme" label="Modal theme" value={modalTheme} colors={modalThemeConfig.colors} onChange={value => { setModalTheme(value); setModalColors({}); }} />
-      <ThemeColors label="Modal" theme={themes[modalTheme]} overrides={modalColors} onChange={setModalColors} />
       <div className="launch"><button className="launch-button" disabled={!valid} onClick={() => setOpen(true)}>Open Markee <span>↗</span></button><span className="launch-note">{account.isConnected ? 'Uses your connected app wallet' : 'Browse first. Connect when you’re ready.'}</span><a className="view-code" href="#sdk-configuration">View generated code <span aria-hidden="true">↓</span></a></div></section>
     </main>
     <section id="sdk-configuration" className="config-export" aria-labelledby="config-export-title" tabIndex={-1}>
