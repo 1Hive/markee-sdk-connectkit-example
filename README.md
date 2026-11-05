@@ -50,3 +50,5 @@ The **Your board** tab prefills that address. The SDK detects its strategy; no s
 Run `npm test` to check URL validation and compile both generated code formats against the installed published SDK.
 
 The automatic moderation selector offers Relaxed (scam/phishing rules), Standard (current rules plus profanity), and Strict (also hides links and payment addresses). The exported code passes `moderation: { severity }` to both the sign and modal. `severity=relaxed|standard|strict` can also prefill this selector. Manual flags and unavailable checks still hide content.
+
+Use **Randomize sign colors** or **Randomize modal colors** for a coordinated palette in the selected light/dark mode (System uses the current device mode). Generation checks text/background pairs at 4.5:1 or higher and borders/focus rings at 3:1 or higher, while keeping warning, error, and success hues recognizable. The contrast readout updates after manual edits too. Generated colors appear in the preview, swatches, and exported integration code. These checks cover the generated color pairs, not a complete accessibility audit of the host app.

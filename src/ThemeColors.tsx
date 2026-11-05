@@ -1,5 +1,7 @@
-import { useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import type { MarkeeTheme, MarkeeThemeColors } from '@markee_team/sdk';
+
+import { minimumTextContrast, randomPalette } from './palette';
 
 // Defaults match the SDK palettes; export only explicit user overrides.
 const light: Required<MarkeeThemeColors> = {
@@ -37,15 +39,21 @@ export function ThemeColors({ label, theme, overrides, onChange }: {
   overrides: Partial<MarkeeThemeColors>;
   onChange(colors: Partial<MarkeeThemeColors>): void;
 }) {
+  const [generated, setGenerated] = useState(false);
   const systemDark = useSyncExternalStore(subscribe, isDark, () => false);
   const defaults = theme.mode === 'dark' || theme.mode === 'system' && systemDark ? dark : light;
   const colors = { ...defaults, ...theme.colors, ...overrides };
   const title = (key: string) => key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
-  return <details className="color-editor"><summary>Customize {label.toLowerCase()} colors</summary>
+  const darkMode = theme.mode === 'dark' || theme.mode === 'system' && systemDark;
+  const minimumContrast = minimumTextContrast(colors);
+  return <><div className="palette-tools">
+    <button type="button" className="random-palette" onClick={() => { onChange(randomPalette(darkMode)); setGenerated(true); }}>✦ Randomize {label.toLowerCase()} colors</button>
+    {generated && <span role="status" className={minimumContrast >= 4.5 ? 'contrast-pass' : 'contrast-warning'}>{minimumContrast >= 4.5 ? 'Text contrast checked' : 'Text contrast below target'} · {minimumContrast.toFixed(2)}:1 minimum</span>}
+  </div><details className="color-editor"><summary>Customize {label.toLowerCase()} colors</summary>
     <div className="color-grid">{(Object.keys(defaults) as (keyof MarkeeThemeColors)[]).map(key => <label className="color-field" key={key}>
       <span>{title(key)}</span><div><input type="color" aria-label={`${label} ${title(key).toLowerCase()} color`} value={colors[key].slice(0, 7)} onInput={event => onChange({ ...overrides, [key]: event.currentTarget.value + colors[key].slice(7) })}/><code>{colors[key]}</code></div>
     </label>)}</div>
     <label className="opacity-field">Overlay opacity <input type="range" min="0" max="255" aria-label={`${label} overlay opacity`} value={parseInt(colors.overlay.slice(7) || 'ff', 16)} onChange={event => onChange({ ...overrides, overlay: colors.overlay.slice(0, 7) + Number(event.target.value).toString(16).padStart(2, '0') })}/></label>
     <button className="reset-colors" disabled={!Object.keys(overrides).length} onClick={() => onChange({})}>Reset to theme colors</button>
-  </details>;
+  </details></>;
 }
