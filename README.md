@@ -38,3 +38,13 @@ npm run build
 ```
 
 The SDK uses the production Markee API (`https://www.markee.xyz/api/sdk/v1`) by default. Set `VITE_MARKEE_API_URL` only when explicitly testing another backend.
+
+## Share a prefilled playground
+
+Open the playground with `integration=react` or `integration=vanilla` and a Base leaderboard contract in `board`:
+
+[React example](https://markee-sdk-connectkit-example.vercel.app/?integration=react&board=0x80783947c9561EFa9BA484D44BBd5AAa03028242#sdk-configuration) · [Vanilla JavaScript example](https://markee-sdk-connectkit-example.vercel.app/?integration=vanilla&board=0xAce1e0dfD123525B1270a69CF9b1C5b6F850f1e6#sdk-configuration)
+
+The **Your board** tab prefills that address. The SDK detects its strategy; no strategy parameter is needed. Customize the sign and modal themes, then copy or download the generated `SiteMarkee.tsx` or `markee.js`. JavaScript output assumes an npm bundler and includes teardown instructions. React output accepts your existing SDK wallet adapter. Deep-linked boards are previewed without registering the playground as their website.
+
+Run `npm test` to check URL validation and compile both generated code formats against the installed published SDK.
