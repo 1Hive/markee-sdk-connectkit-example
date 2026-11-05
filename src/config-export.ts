@@ -28,10 +28,11 @@ export const signConfig = ${sign};
 export const modalConfig = ${modal};
 const container = document.getElementById('markee');
 if (!container) throw new Error('Missing #markee container');
-const markee = createMarkee(${JSON.stringify({ ...(options.apiUrl ? { apiUrl: options.apiUrl } : {}), moderation: { severity: options.severity ?? 'standard' }, theme: options.modalTheme }, null, 2)});
+const { placement, ...modalOptions } = modalConfig;
+const markee = createMarkee(modalOptions);
 const sign = createMarkeeSign(container, {
   ...signConfig,
-  onOpen: () => markee.open({ placement: modalConfig.placement }),
+  onOpen: () => markee.open({ placement }),
 });
 
 // On page teardown, call this to remove listeners and close the modal.
