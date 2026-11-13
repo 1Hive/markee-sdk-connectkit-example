@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ConnectKitButton } from 'connectkit';
 import { useAccount } from 'wagmi';
 import { MarkeeModal, MarkeeSign } from '@markee_team/sdk/react';
-import type { Address, MarkeeTheme, Placement } from '@markee_team/sdk';
+import type { Address, MarkeeTheme, ModerationOptions, Placement } from '@markee_team/sdk';
 import { useMarkeeWallet } from './wallet';
 import { configurationFile } from './config-export';
 import { readPlaygroundLink, type Integration, type Severity } from './playground';
@@ -40,7 +40,8 @@ export function App() {
   const [board, setBoard] = useState(initialLink.board);
   const [integration, setIntegration] = useState<Integration>(initialLink.integration);
   const [severity, setSeverity] = useState<Severity>(initialLink.severity);
-  const moderation = useMemo(() => ({ severity }), [severity]);
+  const [rules, setRules] = useState(initialLink.rules);
+  const moderation = useMemo<ModerationOptions>(() => ({ version: 1, severity, rules: rules ?? {} }), [severity, rules]);
   const [sharedTheme, setSharedTheme] = useState<ThemeName>('charcoal');
   const [sharedColors, setSharedColors] = useState<NonNullable<MarkeeTheme['colors']>>({});
   const [customizeModal, setCustomizeModal] = useState(false);
@@ -61,7 +62,7 @@ export function App() {
     ? { ...themes[modalOverride.theme], colors: { ...(themes[modalOverride.theme] as MarkeeTheme).colors, ...modalOverride.colors } }
     : sharedThemeConfig, [customizeModal, modalOverride, sharedThemeConfig]);
   const valid = /^0x[\da-fA-F]{40}$/.test(mode === 'community' ? community : mode === 'board' ? board : mode === 'rent' ? rent : sale);
-  const configSource = configurationFile({ integration, severity, placement, signTheme: signThemeConfig, modalTheme: modalThemeConfig, separateModal: customizeModal, apiUrl });
+  const configSource = configurationFile({ integration, moderation, placement, signTheme: signThemeConfig, modalTheme: modalThemeConfig, separateModal: customizeModal, apiUrl });
   const filename = integration === 'react' ? 'SiteMarkee.tsx' : 'markee.js';
   const copyConfig = async () => {
     try { await navigator.clipboard.writeText(configSource); setExportNotice('Configuration copied.'); }
@@ -82,13 +83,13 @@ export function App() {
         <h1 id="preview-title">Your Markee, <em>your style.</em></h1>
         <p className="preview-description">Adjust the controls to see your sign and modal change together.</p>
         <div className="sign-preview-card"><div className="preview-caption">Sign preview</div>{valid ? <MarkeeSign moderation={moderation} className="live-sign" apiUrl={apiUrl} placement={placement} theme={signThemeConfig} onOpen={() => setOpen(true)} /> : <p className="preview-empty">Enter a valid address to preview your Markee.</p>}</div>
-        <div className="modal-preview-card"><div className="preview-caption">Modal preview <span>Visual preview · use Open Markee to interact</span></div>{valid ? <ModalPreview placement={placement} theme={modalThemeConfig} severity={severity} apiUrl={apiUrl} /> : <p className="preview-empty">Enter a valid address to preview the modal.</p>}</div>
+        <div className="modal-preview-card"><div className="preview-caption">Modal preview <span>Visual preview · use Open Markee to interact</span></div>{valid ? <ModalPreview placement={placement} theme={modalThemeConfig} moderation={moderation} apiUrl={apiUrl} /> : <p className="preview-empty">Enter a valid address to preview the modal.</p>}</div>
       </section>
       <section className="demo"><div className="demo-top"><span>THE INTEGRATION PLAYGROUND</span><span className="network">Base</span></div><div className="tabs" aria-label="Placement type">{(initialLink.board ? (['board'] as const) : (['sale', 'rent', 'community', 'board'] as const)).map(value => <button key={value} className={mode === value ? 'selected' : ''} onClick={() => { setMode(value); setNotice(''); }}>{value === 'sale' ? 'For sale' : value === 'rent' ? 'For rent' : value === 'board' ? initialLink.strategy === 'ForRent' ? 'Your For Rent' : initialLink.strategy === 'ForSale' ? 'Your For Sale' : 'Your board' : 'Community'}</button>)}</div><div className="preview"><div className="preview-top"><span className="tiny-mark">m</span><span>{mode === 'board' ? 'Your live Markee preview' : mode === 'sale' ? 'A message that stays with you' : mode === 'rent' ? 'Your message, in the spotlight' : 'Built around your community'}</span></div><h2>{mode === 'board' ? 'Your leaderboard. Your style.' : mode === 'sale' ? 'Make your mark.' : mode === 'rent' ? 'Keep the conversation going.' : 'A voice. A shared treasury.'}</h2><p>{mode === 'board' ? 'Preview your leaderboard and customize its integration below.' : mode === 'sale' ? 'Explore the sample For Sale board, create a message, and fund your place on the leaderboard.' : mode === 'rent' ? 'Choose a rental board to start, adjust, or stop a stream and manage your ETHx balance.' : 'Open a community board, activate its integration, and manage revenue with your council wallet.'}</p></div>
       {mode === 'board' && <div className="config"><label htmlFor="custom-board">Leaderboard address (Base)</label><input id="custom-board" value={board} onChange={event => setBoard(event.target.value)} placeholder="0x…" spellCheck={false}/><small>For Sale or For Rent is detected automatically by the SDK.</small></div>}
       {mode === 'rent'  && <div className="config"><label htmlFor="rent-board">Rental board address</label><input id="rent-board" value={rent} onChange={event => setRent(event.target.value)} placeholder="0x…" spellCheck={false}/></div>}
       {mode === 'community' && <div className="config"><label htmlFor="community-chain">Community network</label><select id="community-chain" value={chainId} onChange={event => setChainId(Number(event.target.value))}>{[[100, 'Gnosis'], [8453, 'Base'], [10, 'Optimism'], [42161, 'Arbitrum'], [42220, 'Celo'], [137, 'Polygon'], [1, 'Ethereum'], [11155111, 'Sepolia'], [421614, 'Arbitrum Sepolia'], [11155420, 'Optimism Sepolia']].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><label htmlFor="community-address">Community address</label><input id="community-address" value={community} onChange={event => setCommunity(event.target.value)} placeholder="0x…" spellCheck={false}/></div>}
-      <div className="config"><label htmlFor="moderation-severity">Automatic moderation severity</label><select id="moderation-severity" value={severity} onChange={event => setSeverity(event.target.value as Severity)}><option value="relaxed">Relaxed · scam and phishing rules</option><option value="standard">Standard · current rules and profanity</option><option value="strict">Strict · also hide links and payment addresses</option></select><small>Manual moderator flags always apply. Unavailable checks hide content. This configures your integration; Markee’s site keeps its Standard policy.</small></div>
+      <div className="config"><label htmlFor="moderation-severity">Automatic moderation severity</label><select id="moderation-severity" value={rules ? 'custom' : severity} onChange={event => { setSeverity(event.target.value as Severity); setRules(undefined); }}><option value="relaxed">Relaxed · scam and phishing rules</option><option value="standard">Standard · current rules and profanity</option><option value="strict">Strict · also hide links and payment addresses</option>{rules && <option value="custom">Custom board rules</option>}</select><small>Board owners can change saved moderation in Markee. Saved board rules take precedence over this versioned integration default.</small></div>
       <ThemePicker id="shared-theme" label="Shared theme" value={sharedTheme} colors={sharedThemeConfig.colors} onChange={value => { setSharedTheme(value); setSharedColors({}); }} />
       <div className="config"><small>{customizeModal ? 'Used by the sign. The modal uses its separate theme below.' : 'Applies to both the sign and modal.'}</small></div>
       <ThemeColors label="Shared" theme={themes[sharedTheme]} overrides={sharedColors} onChange={setSharedColors} />

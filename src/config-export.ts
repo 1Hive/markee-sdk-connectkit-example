@@ -1,16 +1,17 @@
 import type { Integration, Severity } from './playground';
-import type { MarkeeTheme, Placement } from '@markee_team/sdk';
+import type { MarkeeTheme, ModerationOptions, Placement } from '@markee_team/sdk';
 
 export function configurationFile(options: {
   integration?: Integration;
   severity?: Severity;
+  moderation?: ModerationOptions;
   placement: Placement;
   signTheme: MarkeeTheme;
   modalTheme: MarkeeTheme;
   separateModal?: boolean;
   apiUrl?: string;
 }) {
-  const shared = { placement: options.placement, moderation: { severity: options.severity ?? 'standard' }, ...(options.apiUrl ? { apiUrl: options.apiUrl } : {}) };
+  const shared = { placement: options.placement, moderation: options.moderation ?? { version: 1, severity: options.severity ?? 'standard', rules: {} }, ...(options.apiUrl ? { apiUrl: options.apiUrl } : {}) };
   const { sign: signOptions, ...baseTheme } = options.signTheme;
   const sharedTheme = JSON.stringify(baseTheme, null, 2);
   const sharedConfig = JSON.stringify(shared, null, 2);

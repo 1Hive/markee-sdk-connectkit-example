@@ -14,12 +14,12 @@ const address = '0x80783947c9561EFa9BA484D44BBd5AAa03028242';
 
 test('React and vanilla links preserve the exact board address', () => {
   for (const integration of ['react', 'vanilla']) {
-    assert.deepEqual(readPlaygroundLink(`?${new URLSearchParams({ integration, board: address })}`), { integration, board: address, strategy: undefined, severity: 'standard' });
+    assert.deepEqual(readPlaygroundLink(`?${new URLSearchParams({ integration, board: address })}`), { integration, board: address, strategy: undefined, severity: 'standard', rules: undefined });
   }
 });
 test('malformed boards and unknown integration formats fall back safely', () => {
-  assert.deepEqual(readPlaygroundLink('?integration=evil&board=0x123'), { integration: 'react', board: '', strategy: undefined, severity: 'standard' });
-  assert.deepEqual(readPlaygroundLink(''), { integration: 'react', board: '', strategy: undefined, severity: 'standard' });
+  assert.deepEqual(readPlaygroundLink('?integration=evil&board=0x123'), { integration: 'react', board: '', strategy: undefined, severity: 'standard', rules: undefined });
+  assert.deepEqual(readPlaygroundLink(''), { integration: 'react', board: '', strategy: undefined, severity: 'standard', rules: undefined });
 });
 test('both generated integrations compile against the installed published SDK', () => {
   const dir = mkdtempSync(resolve('.generated-check-'));
@@ -28,6 +28,7 @@ test('both generated integrations compile against the installed published SDK', 
       const source = configurationFile({ integration, separateModal, severity: 'strict', placement: { kind: 'board', chainId: 8453, address }, signTheme: { mode: 'dark', colors: { warning: '#ff9900' } }, modalTheme: { mode: 'light', radius: 12 } });
       assert.ok(source.includes(address));
       assert.ok(source.includes('\"severity\": \"strict\"'));
+      assert.ok(source.includes('\"version\": 1'));
       assert.ok(source.includes('#ff9900'));
       assert.ok(!source.includes('strategy:'));
       const file = resolve(dir, integration === 'react' ? `SiteMarkee-${separateModal}.tsx` : `markee-${separateModal}.js`);
@@ -38,6 +39,15 @@ test('both generated integrations compile against the installed published SDK', 
     const errors = ts.getPreEmitDiagnostics(program);
     assert.equal(errors.length, 0, ts.formatDiagnosticsWithColorAndContext(errors, { getCanonicalFileName: p => p, getCurrentDirectory: () => process.cwd(), getNewLine: () => '\n' }));
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('custom rules in a board link become the versioned SDK policy', () => {
+  const { rules } = readPlaygroundLink(`?board=${address}&rules=profanity,ens`);
+  assert.deepEqual(rules, { profanity: true, links: false, addresses: false, ens: true });
+  assert.equal(readPlaygroundLink('?rules=unknown').rules, undefined);
+  const source = configurationFile({ moderation: { version: 1, severity: 'standard', rules }, placement: { kind: 'board', chainId: 8453, address }, signTheme: { mode: 'dark' }, modalTheme: { mode: 'dark' } });
+  assert.ok(source.includes('\"ens\": true'));
+  assert.ok(source.includes('\"links\": false'));
 });
 
 test('strategy and severity query parameters configure the preview without adding SDK strategy config', () => {
