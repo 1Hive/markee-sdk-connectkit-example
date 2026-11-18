@@ -19,12 +19,12 @@ npm run dev
 
 Open <http://127.0.0.1:5173>. The sample locks the published SDK version in `package-lock.json` and includes two existing Base boards. The **For sale** board supports one-time payments and MARKEE rewards; **For rent** uses ETHx streaming. These are live contracts, so confirming in a wallet moves real funds.
 
-The **Community** tab demonstrates the SDK's `multiBoard={{ platformId, chainId, communityId }}` integration. Choose Gardens and enter a RegistryCommunity address on its identity chain, or choose Revnet and enter a Base project ID. The SDK asks Markee's API for that community's board and moderation state. The exported React and JavaScript examples accept the current page's `chainId` and `communityId`, so the same component can serve many community pages. New activation is disabled by default on Markee's API; Gardens requires its pilot gate, Revnet remains a gated prototype, and Giveth is a design test only. When activation is enabled, the authorized owner chooses a strategy and a Base beneficiary; no bridge or council revenue claim is part of this new flow. Existing boards remain viewable when activation is disabled.
+The **Community** tab uses the live Gardens integration lookup. Choose the identity network and enter a Gardens RegistryCommunity address, such as the [Markee Cooperative on Base](https://app.gardens.fund/gardens/8453/0x9a378ebed22610e9fbb941fe27323fe00cdeebc6). The SDK asks Markee's API for that community's board and moderation state. A valid community may have no Markee board yet. Exported React and JavaScript examples accept the current page's `chainId` and `communityId`, so the same component can serve many community pages.
 
 ```tsx
-const multiBoard = { platformId: 'gardens', chainId: community.chainId, communityId: community.address };
-<MarkeeSign multiBoard={multiBoard} onOpen={() => setOpen(true)} />
-<MarkeeModal multiBoard={multiBoard} open={open} onClose={() => setOpen(false)} wallet={wallet} />
+const placement = { kind: 'gardens-community' as const, chainId: community.chainId, community: community.address };
+<MarkeeSign placement={placement} onOpen={() => setOpen(true)} />
+<MarkeeModal placement={placement} open={open} onClose={() => setOpen(false)} wallet={wallet} />
 ```
 
 Use the shared theme selector to preview charcoal, light, dark, system, and a custom brand palette. The sign fades in a theme-matched MARKEE logo on hover or keyboard focus; the Markee logo on hover control toggles `theme.sign.hoverLogo`. The app passes its selected ConnectKit wallet to the modal. With no app wallet, supported For Sale payments can continue through Markee's hosted checkout.
@@ -47,7 +47,7 @@ npm run build
 
 The SDK uses the production Markee API (`https://www.markee.xyz/api/sdk/v1`) by default. Set `VITE_MARKEE_API_URL` only when explicitly testing another backend.
 
-The Community tab needs a Markee API deployment that supports `platform-community` and its Base registrar lookup. The npm package alone does not enable this backend feature. Merely supplying `multiBoard` also does not verify a community page's domain: render a marker containing the resolved board address in that page's server-returned HTML and verify the public HTTPS page with Markee.
+To test the new generic `multiBoard={{ platformId, chainId, communityId }}` path, set `VITE_MULTI_BOARD_PREVIEW=true` and point `VITE_MARKEE_API_URL` at a Markee API deployment that supports `platform-community` and its Base registrar lookup. This is off by default because the current production API rejects that placement. New activation requires Markee's platform gate and owner authorization; Revnet remains a gated prototype and Giveth a design test. Merely supplying a community identity does not verify a domain: render a marker containing the resolved board address in the page's server-returned HTML and verify the public HTTPS page with Markee.
 
 ## Share a prefilled playground
 

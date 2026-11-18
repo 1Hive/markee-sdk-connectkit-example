@@ -69,6 +69,24 @@ test('multi-board exports compile and take each community identity from the host
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('live Gardens exports use the current API placement and each page identity', () => {
+  const dir = mkdtempSync(resolve('.generated-check-'));
+  try {
+    const files = ['react', 'vanilla'].map(integration => {
+      const source = configurationFile({ integration, placement: { kind: 'gardens-community', chainId: 8453, community: '0x9a378ebed22610e9fbb941fe27323fe00cdeebc6' }, signTheme: { mode: 'dark' }, modalTheme: { mode: 'dark' } });
+      assert.ok(source.includes("kind: 'gardens-community'"));
+      assert.ok(source.includes('page.communityId') || source.includes('community: communityId'));
+      assert.ok(!source.includes('0x9a378ebed22610e9fbb941fe27323fe00cdeebc6'), 'export must not pin the preview community');
+      const file = resolve(dir, integration === 'react' ? 'SiteMarkee.tsx' : 'markee.js');
+      writeFileSync(file, source);
+      return file;
+    });
+    const program = ts.createProgram(files, { noEmit: true, allowJs: true, checkJs: true, strict: true, skipLibCheck: true, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, allowSyntheticDefaultImports: true });
+    const errors = ts.getPreEmitDiagnostics(program);
+    assert.equal(errors.length, 0, ts.formatDiagnosticsWithColorAndContext(errors, { getCanonicalFileName: p => p, getCurrentDirectory: () => process.cwd(), getNewLine: () => '\n' }));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('custom rules in a board link become the versioned SDK policy', () => {
   const { rules } = readPlaygroundLink(`?board=${address}&rules=profanity,ens`);
   assert.deepEqual(rules, { profanity: true, links: false, addresses: false, ens: true });
