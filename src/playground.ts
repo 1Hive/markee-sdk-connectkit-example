@@ -1,6 +1,6 @@
 export type Severity = 'relaxed' | 'standard' | 'strict';
 export type Integration = 'react' | 'vanilla';
-export type PlatformId = 'gardens' | 'revnet';
+export type PlatformId = 'gardens' | 'revnet' | 'giveth';
 export type PlaygroundMode = 'sale' | 'rent' | 'community' | 'board';
 export type ThemeName = 'light' | 'dark' | 'system' | 'charcoal' | 'plum';
 export const moderationRuleNames = ['profanity', 'links', 'addresses', 'ens'] as const;
@@ -25,7 +25,7 @@ function readTheme(value: string | null): ThemeName {
 export function validPlatformIdentity(platformId: PlatformId, chainId: number, communityId: string): boolean {
   if (!Number.isSafeInteger(chainId) || chainId <= 0) return false;
   if (platformId === 'gardens') return /^0x[\da-fA-F]{40}$/.test(communityId) && !/^0x0{40}$/i.test(communityId);
-  if (platformId !== 'revnet' || !/^[1-9][0-9]*$/.test(communityId) || communityId.length > 78) return false;
+  if ((platformId !== 'revnet' && platformId !== 'giveth') || chainId !== 8453 || !/^[1-9][0-9]*$/.test(communityId) || communityId.length > 78) return false;
   return BigInt(communityId) < 2n ** 256n;
 }
 
@@ -54,9 +54,9 @@ export function readSharedPlaygroundLink(search: string) {
   const requestedMode = params.get('mode');
   const mode: PlaygroundMode = requestedMode === 'sale' || requestedMode === 'rent' || requestedMode === 'community' || requestedMode === 'board'
     ? requestedMode : legacy.board ? 'board' : 'sale';
-  const platformId: PlatformId = params.get('platformId') === 'revnet' ? 'revnet' : 'gardens';
+  const platformId: PlatformId = params.get('platformId') === 'revnet' ? 'revnet' : params.get('platformId') === 'giveth' ? 'giveth' : 'gardens';
   const requestedChain = Number(params.get('chainId'));
-  const chainId = Number.isSafeInteger(requestedChain) && requestedChain > 0 ? requestedChain : platformId === 'revnet' ? 8453 : 100;
+  const chainId = Number.isSafeInteger(requestedChain) && requestedChain > 0 ? requestedChain : platformId === 'gardens' ? 100 : 8453;
   const communityId = params.get('communityId') ?? '';
   const customModal = params.get('customizeModal') === '1';
   return {
@@ -64,8 +64,8 @@ export function readSharedPlaygroundLink(search: string) {
     saleBoard: addressPattern.test(params.get('saleBoard') ?? '') ? params.get('saleBoard')! : '',
     rentBoard: addressPattern.test(params.get('rentBoard') ?? '') ? params.get('rentBoard')! : '',
     platformId,
-    chainId: platformId === 'revnet' ? 8453 : chainId,
-    communityId: validPlatformIdentity(platformId, platformId === 'revnet' ? 8453 : chainId, communityId) ? communityId : '',
+    chainId: platformId === 'gardens' ? chainId : 8453,
+    communityId: validPlatformIdentity(platformId, platformId === 'gardens' ? chainId : 8453, communityId) ? communityId : '',
     theme: readTheme(params.get('theme')),
     colors: readColors(params.get('colors')),
     customizeModal: customModal,

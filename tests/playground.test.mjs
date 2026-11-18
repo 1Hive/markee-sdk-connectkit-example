@@ -62,6 +62,21 @@ test('multi-board identity validation matches Gardens addresses and Revnet proje
   assert.equal(validPlatformIdentity('revnet', 8453, '0'), false);
   assert.equal(validPlatformIdentity('revnet', 8453, '0x42'), false);
   assert.equal(validPlatformIdentity('revnet', 8453, (2n ** 256n).toString()), false);
+  assert.equal(validPlatformIdentity('giveth', 8453, '42'), true);
+  assert.equal(validPlatformIdentity('giveth', 100, '42'), false);
+  assert.equal(validPlatformIdentity('giveth', 8453, '0'), false);
+});
+test('Giveth concept share links restore the Project ID on Base without a board', () => {
+  const url = createShareUrl('https://example.com/', {
+    mode: 'community', board: '', saleBoard: '', rentBoard: '', platformId: 'giveth', chainId: 8453,
+    communityId: '42', integration: 'react', severity: 'standard', theme: 'charcoal', colors: {},
+    customizeModal: false, modalTheme: 'charcoal', modalColors: {}, hoverEnabled: true,
+  });
+  const restored = readSharedPlaygroundLink(new URL(url).search);
+  assert.equal(restored.platformId, 'giveth');
+  assert.equal(restored.chainId, 8453);
+  assert.equal(restored.communityId, '42');
+  assert.equal(restored.board, '');
 });
 test('both generated integrations compile against the installed published SDK', () => {
   const dir = mkdtempSync(resolve('.generated-check-'));

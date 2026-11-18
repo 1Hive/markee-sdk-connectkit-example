@@ -21,6 +21,8 @@ Open <http://127.0.0.1:5173>. The sample locks the published SDK version in `pac
 
 The **Community** tab uses the live Gardens integration lookup. Choose the identity network and enter a Gardens RegistryCommunity address, such as the [Markee Cooperative on Base](https://app.gardens.fund/gardens/8453/0x9a378ebed22610e9fbb941fe27323fe00cdeebc6). The SDK asks Markee's API for that community's board and moderation state. A valid community may have no Markee board yet. The community admin view links to Markee's Creator dashboard. Exported React and JavaScript examples accept the current page's `chainId` and `communityId`, so the same component can serve many community pages.
 
+The Community selector also includes **Giveth Projects · concept preview**. Enter a numeric Project ID to show a proposed activation screen with a blank Base beneficiary field and For Sale/For Rent payment models. It does not fetch Giveth project data, authorize an owner, generate SDK integration code, or activate a board. Share links can carry the Project ID for demonstrations. Giveth remains a non-production design test.
+
 ```tsx
 const placement = { kind: 'gardens-community' as const, chainId: community.chainId, community: community.address };
 <MarkeeSign placement={placement} onOpen={() => setOpen(true)} />
