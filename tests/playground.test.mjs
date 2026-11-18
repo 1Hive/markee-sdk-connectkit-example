@@ -8,7 +8,7 @@ async function loadSource(file) {
   const { outputText } = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } });
   return import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
 }
-const { readPlaygroundLink, validPlatformIdentity } = await loadSource('src/playground.ts');
+const { readPlaygroundLink, readSharedPlaygroundLink, createShareUrl, validPlatformIdentity } = await loadSource('src/playground.ts');
 const { configurationFile } = await loadSource('src/config-export.ts');
 const address = '0x80783947c9561EFa9BA484D44BBd5AAa03028242';
 
@@ -20,6 +20,39 @@ test('React and vanilla links preserve the exact board address', () => {
 test('malformed boards and unknown integration formats fall back safely', () => {
   assert.deepEqual(readPlaygroundLink('?integration=evil&board=0x123'), { integration: 'react', board: '', strategy: undefined, severity: 'standard', rules: undefined });
   assert.deepEqual(readPlaygroundLink(''), { integration: 'react', board: '', strategy: undefined, severity: 'standard', rules: undefined });
+});
+test('share URL restores Community identity, moderation, and appearance without a board address', () => {
+  const settings = {
+    mode: 'community', board: address, saleBoard: address, rentBoard: address,
+    platformId: 'gardens', chainId: 8453, communityId: '0x9a378ebed22610e9fbb941fe27323fe00cdeebc6',
+    integration: 'vanilla', severity: 'strict', rules: { profanity: true, links: false, addresses: false, ens: true },
+    theme: 'plum', colors: { primary: '#123456' }, customizeModal: true,
+    modalTheme: 'dark', modalColors: { overlay: '#17203888' }, hoverEnabled: false,
+  };
+  const url = new URL(createShareUrl('https://example.com/?board=stale#sdk-configuration', settings));
+  assert.equal(url.searchParams.has('board'), false);
+  assert.equal(url.hash, '');
+  assert.deepEqual(readSharedPlaygroundLink(url.search), {
+    mode: 'community', board: '', strategy: undefined,
+    saleBoard: '', rentBoard: '',
+    platformId: 'gardens', chainId: 8453, communityId: settings.communityId,
+    integration: 'vanilla', severity: 'strict', rules: settings.rules,
+    theme: 'plum', colors: settings.colors, customizeModal: true,
+    modalTheme: 'dark', modalColors: settings.modalColors, hoverEnabled: false,
+  });
+});
+test('share URL keeps a board deep link and rejects malformed Community settings', () => {
+  const base = {
+    mode: 'board', board: address, saleBoard: '', rentBoard: '',
+    platformId: 'gardens', chainId: 100, communityId: '', integration: 'react', severity: 'standard',
+    theme: 'charcoal', colors: {}, customizeModal: false, modalTheme: 'charcoal', modalColors: {}, hoverEnabled: true,
+  };
+  assert.equal(readSharedPlaygroundLink(new URL(createShareUrl('https://example.com/', base)).search).board, address);
+  const malformed = readSharedPlaygroundLink('?mode=community&platformId=gardens&chainId=-1&communityId=42&theme=other&colors=%7B%22text%22%3A%22url(javascript%3A1)%22%7D');
+  assert.equal(malformed.communityId, '');
+  assert.equal(malformed.chainId, 100);
+  assert.equal(malformed.theme, 'charcoal');
+  assert.deepEqual(malformed.colors, {});
 });
 test('multi-board identity validation matches Gardens addresses and Revnet project IDs', () => {
   assert.equal(validPlatformIdentity('gardens', 100, address), true);

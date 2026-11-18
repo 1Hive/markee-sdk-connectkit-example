@@ -5,14 +5,15 @@ import { MarkeeModal, MarkeeSign } from '@markee_team/sdk/react';
 import type { Address, MarkeeTheme, ModerationOptions, PlacementInput } from '@markee_team/sdk';
 import { useMarkeeWallet } from './wallet';
 import { configurationFile } from './config-export';
-import { readPlaygroundLink, validPlatformIdentity, type Integration, type PlatformId, type Severity } from './playground';
+import { createShareUrl, readSharedPlaygroundLink, validPlatformIdentity, type Integration, type PlatformId, type Severity, type ThemeName } from './playground';
 import { ModalPreview } from './ModalPreview';
 import { ThemeColors } from './ThemeColors';
 
-const initialLink = readPlaygroundLink(window.location.search);
-const sale = import.meta.env.VITE_SALE_BOARD || '0x80783947c9561EFa9BA484D44BBd5AAa03028242';
+const initialLink = readSharedPlaygroundLink(window.location.search);
+const sale = initialLink.saleBoard || import.meta.env.VITE_SALE_BOARD || '0x80783947c9561EFa9BA484D44BBd5AAa03028242';
 const apiUrl = import.meta.env.VITE_MARKEE_API_URL || undefined;
 const multiBoardPreview = import.meta.env.VITE_MULTI_BOARD_PREVIEW === 'true';
+const initialPlatformId = multiBoardPreview ? initialLink.platformId : 'gardens';
 const publishedSite = import.meta.env.VITE_PUBLIC_SITE_URL || 'https://markee-sdk-connectkit-example.vercel.app';
 const siteUrl = typeof window !== 'undefined' && window.location.origin === publishedSite ? publishedSite : undefined;
 const themes = {
@@ -32,26 +33,25 @@ const themes = {
     },
   },
 } satisfies Record<string, MarkeeTheme>;
-type ThemeName = keyof typeof themes;
 function ThemePicker({ id, label, value, colors, onChange }: { id: string; label: string; value: ThemeName; colors?: MarkeeTheme['colors']; onChange(value: ThemeName): void }) {
   return <div className="config theme-config"><label htmlFor={id}>{label}</label><div className="theme-picker"><select id={id} value={value} onChange={event => onChange(event.target.value as ThemeName)}><option value="charcoal">Charcoal · sign style</option><option value="light">Light</option><option value="dark">Dark</option><option value="system">Match device</option><option value="plum">Plum · custom brand</option></select><span className={`theme-swatch ${value}`} aria-hidden="true"><i style={{ background: colors?.surface ?? colors?.background }}/><i style={{ background: colors?.primary ?? colors?.text }}/><i style={{ background: colors?.accent }}/></span></div></div>;
 }
 export function App() {
-  const [mode, setMode] = useState<'sale' | 'rent' | 'community' | 'board'>(initialLink.board ? 'board' : 'sale');
+  const [mode, setMode] = useState(initialLink.mode);
   const [board, setBoard] = useState(initialLink.board);
   const [integration, setIntegration] = useState<Integration>(initialLink.integration);
   const [severity, setSeverity] = useState<Severity>(initialLink.severity);
   const [rules, setRules] = useState(initialLink.rules);
   const moderation = useMemo<ModerationOptions>(() => ({ version: 1, severity, rules: rules ?? {} }), [severity, rules]);
-  const [sharedTheme, setSharedTheme] = useState<ThemeName>('charcoal');
-  const [sharedColors, setSharedColors] = useState<NonNullable<MarkeeTheme['colors']>>({});
-  const [customizeModal, setCustomizeModal] = useState(false);
-  const [modalOverride, setModalOverride] = useState<{ theme: ThemeName; colors: NonNullable<MarkeeTheme['colors']> } | null>(null);
-  const [hoverEnabled, setHoverEnabled] = useState(true);
-  const [rent, setRent] = useState(import.meta.env.VITE_RENT_BOARD || '0xAce1e0dfD123525B1270a69CF9b1C5b6F850f1e6');
-  const [platformId, setPlatformId] = useState<PlatformId>('gardens');
-  const [communityId, setCommunityId] = useState(import.meta.env.VITE_COMMUNITY_ADDRESS || '');
-  const [chainId, setChainId] = useState(Number(import.meta.env.VITE_COMMUNITY_CHAIN_ID || 100));
+  const [sharedTheme, setSharedTheme] = useState<ThemeName>(initialLink.theme);
+  const [sharedColors, setSharedColors] = useState<NonNullable<MarkeeTheme['colors']>>(initialLink.colors);
+  const [customizeModal, setCustomizeModal] = useState(initialLink.customizeModal);
+  const [modalOverride, setModalOverride] = useState<{ theme: ThemeName; colors: NonNullable<MarkeeTheme['colors']> } | null>(initialLink.customizeModal ? { theme: initialLink.modalTheme, colors: initialLink.modalColors } : null);
+  const [hoverEnabled, setHoverEnabled] = useState(initialLink.hoverEnabled);
+  const [rent, setRent] = useState(initialLink.rentBoard || import.meta.env.VITE_RENT_BOARD || '0xAce1e0dfD123525B1270a69CF9b1C5b6F850f1e6');
+  const [platformId, setPlatformId] = useState<PlatformId>(initialPlatformId);
+  const [communityId, setCommunityId] = useState(initialPlatformId === initialLink.platformId ? initialLink.communityId || import.meta.env.VITE_COMMUNITY_ADDRESS || '' : '');
+  const [chainId, setChainId] = useState(initialPlatformId === initialLink.platformId && initialLink.communityId ? initialLink.chainId : Number(import.meta.env.VITE_COMMUNITY_CHAIN_ID || 100));
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [exportNotice, setExportNotice] = useState('');
@@ -84,6 +84,18 @@ export function App() {
     try { await navigator.clipboard.writeText(configSource); setExportNotice('Configuration copied.'); }
     catch { setExportNotice('Copy unavailable. Select the code below or download the file.'); }
   };
+  const share = async () => {
+    if (!valid) return;
+    const url = createShareUrl(window.location.href, {
+      mode, board, saleBoard: sale, rentBoard: rent, platformId, chainId, communityId,
+      integration, severity, rules, theme: sharedTheme, colors: sharedColors,
+      customizeModal, modalTheme: modalOverride?.theme ?? sharedTheme,
+      modalColors: modalOverride?.colors ?? {}, hoverEnabled,
+    });
+    window.history.replaceState(null, '', url);
+    try { await navigator.clipboard.writeText(url); setNotice('Share link copied.'); }
+    catch { setNotice('Share link is in your address bar. Copy it from there.'); }
+  };
   const downloadConfig = () => {
     const url = URL.createObjectURL(new Blob([configSource], { type: integration === 'react' ? 'text/typescript;charset=utf-8' : 'text/javascript;charset=utf-8' }));
     const anchor = document.createElement('a');
@@ -101,7 +113,7 @@ export function App() {
         <div className="sign-preview-card"><div className="preview-caption">Sign preview</div>{valid ? <MarkeeSign moderation={moderation} className="live-sign" apiUrl={apiUrl} {...placementInput} theme={signThemeConfig} onOpen={() => setOpen(true)} /> : <p className="preview-empty">Enter a valid board address or platform community ID to preview your Markee.</p>}</div>
         <div className="modal-preview-card"><div className="preview-caption">Modal preview <span>Visual preview · use Open Markee to interact</span></div>{valid ? <ModalPreview {...placementInput} theme={modalThemeConfig} moderation={moderation} apiUrl={apiUrl} /> : <p className="preview-empty">Enter a valid board address or platform community ID to preview the modal.</p>}</div>
       </section>
-      <section className="demo"><div className="demo-top"><span>THE INTEGRATION PLAYGROUND</span><span className="network">Base board</span></div><div className="tabs" aria-label="Placement type">{(initialLink.board ? (['board'] as const) : (['sale', 'rent', 'community', 'board'] as const)).map(value => <button key={value} className={mode === value ? 'selected' : ''} onClick={() => { setMode(value); setNotice(''); }}>{value === 'sale' ? 'For sale' : value === 'rent' ? 'For rent' : value === 'board' ? initialLink.strategy === 'ForRent' ? 'Your For Rent' : initialLink.strategy === 'ForSale' ? 'Your For Sale' : 'Your board' : 'Community'}</button>)}</div><div className="preview"><div className="preview-top"><span className="tiny-mark">m</span><span>{mode === 'board' ? 'Your live Markee preview' : mode === 'sale' ? 'A message that stays with you' : mode === 'rent' ? 'Your message, in the spotlight' : 'Built around your community'}</span></div><h2>{mode === 'board' ? 'Your leaderboard. Your style.' : mode === 'sale' ? 'Make your mark.' : mode === 'rent' ? 'Keep the conversation going.' : 'One community. Its Markee.'}</h2><p>{mode === 'board' ? 'Preview your leaderboard and customize its integration below.' : mode === 'sale' ? 'Explore the sample For Sale board, create a message, and fund your place on the leaderboard.' : mode === 'rent' ? 'Choose a rental board to start, adjust, or stop a stream and manage your ETHx balance.' : 'Look up the current community board. Authorized owners can activate a new Base board with a Base beneficiary when Markee enables the platform.'}</p></div>
+      <section className="demo"><div className="demo-top"><span>THE INTEGRATION PLAYGROUND</span><div className="demo-top-actions"><button type="button" className="share-button" onClick={share} disabled={!valid} aria-label="Copy share link for current playground settings">Share ↗</button><span className="network">Base board</span></div></div><div className="tabs" aria-label="Placement type">{(initialLink.board && initialLink.mode === 'board' ? (['board'] as const) : (['sale', 'rent', 'community', 'board'] as const)).map(value => <button key={value} className={mode === value ? 'selected' : ''} onClick={() => { setMode(value); setNotice(''); }}>{value === 'sale' ? 'For sale' : value === 'rent' ? 'For rent' : value === 'board' ? initialLink.strategy === 'ForRent' ? 'Your For Rent' : initialLink.strategy === 'ForSale' ? 'Your For Sale' : 'Your board' : 'Community'}</button>)}</div><div className="preview"><div className="preview-top"><span className="tiny-mark">m</span><span>{mode === 'board' ? 'Your live Markee preview' : mode === 'sale' ? 'A message that stays with you' : mode === 'rent' ? 'Your message, in the spotlight' : 'Built around your community'}</span></div><h2>{mode === 'board' ? 'Your leaderboard. Your style.' : mode === 'sale' ? 'Make your mark.' : mode === 'rent' ? 'Keep the conversation going.' : 'One community. Its Markee.'}</h2><p>{mode === 'board' ? 'Preview your leaderboard and customize its integration below.' : mode === 'sale' ? 'Explore the sample For Sale board, create a message, and fund your place on the leaderboard.' : mode === 'rent' ? 'Choose a rental board to start, adjust, or stop a stream and manage your ETHx balance.' : 'Look up the current community board. Authorized owners can activate a new Base board with a Base beneficiary when Markee enables the platform.'}</p></div>
       {mode === 'board' && <div className="config"><label htmlFor="custom-board">Leaderboard address (Base)</label><input id="custom-board" value={board} onChange={event => setBoard(event.target.value)} placeholder="0x…" spellCheck={false}/><small>For Sale or For Rent is detected automatically by the SDK.</small></div>}
       {mode === 'rent'  && <div className="config"><label htmlFor="rent-board">Rental board address</label><input id="rent-board" value={rent} onChange={event => setRent(event.target.value)} placeholder="0x…" spellCheck={false}/></div>}
       {mode === 'community' && <div className="config"><label htmlFor="community-platform">Platform</label><select id="community-platform" value={platformId} onChange={event => { const next = event.target.value as PlatformId; setPlatformId(next); setChainId(next === 'revnet' ? 8453 : 100); setCommunityId(''); }}><option value="gardens">Gardens</option>{multiBoardPreview && <option value="revnet">Revnet (activation gated)</option>}</select><label htmlFor="community-chain">Identity network</label><select id="community-chain" value={chainId} onChange={event => setChainId(Number(event.target.value))} disabled={platformId === 'revnet'}>{platformId === 'revnet' ? <option value={8453}>Base</option> : [[100, 'Gnosis'], [8453, 'Base'], [10, 'Optimism'], [42161, 'Arbitrum'], [42220, 'Celo'], [137, 'Polygon'], [1, 'Ethereum']].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><label htmlFor="community-id">{platformId === 'gardens' ? 'RegistryCommunity address' : 'Revnet project ID'}</label><input id="community-id" value={communityId} onChange={event => setCommunityId(event.target.value.trim())} placeholder={platformId === 'gardens' ? '0x…' : 'Project ID (for example, 42)'} inputMode={platformId === 'gardens' ? 'text' : 'numeric'} spellCheck={false}/><small>{multiBoardPreview ? 'Preview of the new platform lookup. It requires Markee’s platform API deployment; activation stays gated.' : 'Looks up an existing Gardens integration through Markee’s live API. A valid community may still have no Markee board.'}</small></div>}
