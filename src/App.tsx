@@ -67,6 +67,14 @@ export function App() {
     : sharedThemeConfig, [customizeModal, modalOverride, sharedThemeConfig]);
   const valid = mode === 'community' ? validPlatformIdentity(platformId, chainId, communityId)
     : /^0x[\da-fA-F]{40}$/.test(mode === 'board' ? board : mode === 'rent' ? rent : sale);
+  const identityInputId = mode === 'community' ? 'community-id' : mode === 'board' ? 'custom-board' : 'rent-board';
+  const missingIdentity = mode === 'community'
+    ? platformId === 'gardens' ? 'Enter a Gardens RegistryCommunity address.' : 'Enter a Revnet project ID.'
+    : 'Enter a valid Base board address.';
+  const openMarkee = () => {
+    if (valid) { setOpen(true); return; }
+    document.getElementById(identityInputId)?.focus();
+  };
   const configSource = configurationFile({ integration, moderation, ...placementInput, signTheme: signThemeConfig, modalTheme: modalThemeConfig, separateModal: customizeModal, apiUrl });
   const filename = integration === 'react' ? 'SiteMarkee.tsx' : 'markee.js';
   const copyConfig = async () => {
@@ -104,7 +112,7 @@ export function App() {
         <ThemeColors label="Modal" theme={themes[modalOverride.theme]} overrides={modalOverride.colors} onChange={colors => setModalOverride({ ...modalOverride, colors })} />
       </div>}
       <div className="config hover-config"><label className="hover-toggle" htmlFor="sign-hover-enabled"><input id="sign-hover-enabled" type="checkbox" checked={hoverEnabled} onChange={event => setHoverEnabled(event.target.checked)} /> Markee logo on hover</label></div>
-      <div className="launch"><button className="launch-button" disabled={!valid} onClick={() => setOpen(true)}>Open Markee <span>↗</span></button><span className="launch-note">{account.isConnected ? 'Uses your connected app wallet' : 'Browse first. Connect when you’re ready.'}</span><a className="view-code" href="#sdk-configuration">View generated code <span aria-hidden="true">↓</span></a></div></section>
+      <div className="launch"><button className="launch-button" onClick={openMarkee} aria-describedby="launch-note">{valid ? 'Open Markee' : mode === 'community' ? 'Choose a community' : 'Enter a board address'} <span>↗</span></button><span className="launch-note" id="launch-note" role="status">{valid ? account.isConnected ? 'Uses your connected app wallet' : 'Browse first. Connect when you’re ready.' : `${missingIdentity} Your wallet connection does not select one automatically.`}</span><a className="view-code" href="#sdk-configuration">View generated code <span aria-hidden="true">↓</span></a></div></section>
     </main>
     <section id="sdk-configuration" className="config-export" aria-labelledby="config-export-title" tabIndex={-1}>
       <div className="export-heading"><div><div className="overline">TAKE IT INTO YOUR APP</div><h2 id="config-export-title">Your SDK configuration</h2><p>Updates as you change the placement, themes, and hover option above.</p></div><div className="export-actions"><button disabled={!valid} onClick={copyConfig}>Copy code</button><button disabled={!valid} onClick={downloadConfig}>Download {integration === 'react' ? '.tsx' : '.js'} ↗</button></div></div>
