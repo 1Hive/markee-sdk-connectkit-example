@@ -19,7 +19,7 @@ npm run dev
 
 Open <http://127.0.0.1:5173>. The sample locks the published SDK version in `package-lock.json` and includes two existing Base boards. The **For sale** board supports one-time payments and MARKEE rewards; **For rent** uses ETHx streaming. These are live contracts, so confirming in a wallet moves real funds.
 
-The **Community** tab uses the live Gardens integration lookup. Choose the identity network and enter a Gardens RegistryCommunity address, such as the [Markee Cooperative on Base](https://app.gardens.fund/gardens/8453/0x9a378ebed22610e9fbb941fe27323fe00cdeebc6). The SDK asks Markee's API for that community's board and moderation state. A valid community may have no Markee board yet. Exported React and JavaScript examples accept the current page's `chainId` and `communityId`, so the same component can serve many community pages.
+The **Community** tab uses the live Gardens integration lookup. Choose the identity network and enter a Gardens RegistryCommunity address, such as the [Markee Cooperative on Base](https://app.gardens.fund/gardens/8453/0x9a378ebed22610e9fbb941fe27323fe00cdeebc6). The SDK asks Markee's API for that community's board and moderation state. A valid community may have no Markee board yet. The community admin view links to Markee's Creator dashboard. Exported React and JavaScript examples accept the current page's `chainId` and `communityId`, so the same component can serve many community pages.
 
 ```tsx
 const placement = { kind: 'gardens-community' as const, chainId: community.chainId, community: community.address };
