@@ -17,7 +17,15 @@ npm ci
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173>. The sample uses the latest published `@markee_team/sdk` and two existing Base boards. The **For sale** board supports one-time payments and MARKEE rewards; **For rent** uses ETHx streaming. These are live contracts, so confirming in a wallet moves real funds.
+Open <http://127.0.0.1:5173>. The sample locks the published SDK version in `package-lock.json` and includes two existing Base boards. The **For sale** board supports one-time payments and MARKEE rewards; **For rent** uses ETHx streaming. These are live contracts, so confirming in a wallet moves real funds.
+
+The **Community** tab demonstrates the SDK's `multiBoard={{ platformId, chainId, communityId }}` integration. Choose Gardens and enter a RegistryCommunity address on its identity chain, or choose Revnet and enter a Base project ID. The SDK asks Markee's API for that community's board and moderation state. The exported React and JavaScript examples accept the current page's `chainId` and `communityId`, so the same component can serve many community pages. New activation is disabled by default on Markee's API; Gardens requires its pilot gate, Revnet remains a gated prototype, and Giveth is a design test only. When activation is enabled, the authorized owner chooses a strategy and a Base beneficiary; no bridge or council revenue claim is part of this new flow. Existing boards remain viewable when activation is disabled.
+
+```tsx
+const multiBoard = { platformId: 'gardens', chainId: community.chainId, communityId: community.address };
+<MarkeeSign multiBoard={multiBoard} onOpen={() => setOpen(true)} />
+<MarkeeModal multiBoard={multiBoard} open={open} onClose={() => setOpen(false)} wallet={wallet} />
+```
 
 Use the shared theme selector to preview charcoal, light, dark, system, and a custom brand palette. The sign fades in a theme-matched MARKEE logo on hover or keyboard focus; the Markee logo on hover control toggles `theme.sign.hoverLogo`. The app passes its selected ConnectKit wallet to the modal. With no app wallet, supported For Sale payments can continue through Markee's hosted checkout.
 
@@ -38,6 +46,8 @@ npm run build
 ```
 
 The SDK uses the production Markee API (`https://www.markee.xyz/api/sdk/v1`) by default. Set `VITE_MARKEE_API_URL` only when explicitly testing another backend.
+
+The Community tab needs a Markee API deployment that supports `platform-community` and its Base registrar lookup. The npm package alone does not enable this backend feature. Merely supplying `multiBoard` also does not verify a community page's domain: render a marker containing the resolved board address in that page's server-returned HTML and verify the public HTTPS page with Markee.
 
 ## Share a prefilled playground
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import type { MarkeeTheme, Placement, ModerationOptions } from '@markee_team/sdk';
+import type { MarkeeTheme, PlacementInput, ModerationOptions } from '@markee_team/sdk';
 
-interface PreviewConfig { placement: Placement; theme: MarkeeTheme; moderation: ModerationOptions; apiUrl?: string }
+type PreviewConfig = PlacementInput & { theme: MarkeeTheme; moderation: ModerationOptions; apiUrl?: string };
 
 /** Isolate the real SDK dialog's positioning, focus and scroll behavior. */
 export function ModalPreview(props: PreviewConfig) {
@@ -15,6 +15,6 @@ export function ModalPreview(props: PreviewConfig) {
     window.addEventListener('message', ready);
     return () => window.removeEventListener('message', ready);
   }, []);
-  useEffect(send, [props.placement, props.theme, props.moderation, props.apiUrl]);
+  useEffect(send, [props.placement, props.multiBoard, props.theme, props.moderation, props.apiUrl]);
   return <iframe ref={frame} src="/modal-preview.html" title="Modal theme preview" className="modal-preview-frame" tabIndex={-1} aria-hidden="true" onLoad={send} />;
 }
